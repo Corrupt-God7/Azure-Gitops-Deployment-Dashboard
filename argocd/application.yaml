@@ -6,7 +6,7 @@ metadata:
 spec:
   project: gitops-dashboard
   source:
-    repoURL: https://github.com/CHANGEME/azure-gitops-deployment-dashboard.git
+    repoURL: https://github.com/Corrupt-God7/Azure-Gitops-Deployment-Dashboard.git
     targetRevision: main
     path: helm/gitops-dashboard
   destination:
