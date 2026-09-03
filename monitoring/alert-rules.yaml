@@ -1,0 +1,15 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: gitops-dashboard-alerts
+  namespace: monitoring
+spec:
+  groups:
+    - name: gitops-dashboard
+      rules:
+        - alert: GitOpsDashboardHighErrorRate
+          expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) > 0.05
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: GitOps dashboard error rate exceeds 5%

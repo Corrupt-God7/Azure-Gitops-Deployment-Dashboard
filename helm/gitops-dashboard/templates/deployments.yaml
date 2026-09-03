@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitops-dashboard-frontend
+spec:
+  replicas: {{ .Values.frontend.replicas }}
+  selector:
+    matchLabels: { app: gitops-dashboard-frontend }
+  template:
+    metadata:
+      labels: { app: gitops-dashboard-frontend }
+    spec:
+      containers:
+        - name: frontend
+          image: "{{ .Values.image.registry }}/gitops-dashboard-frontend:{{ .Values.image.tag }}"
+          ports: [{ containerPort: {{ .Values.frontend.port }} }]
+          readinessProbe:
+            httpGet: { path: /, port: {{ .Values.frontend.port }} }
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitops-dashboard-backend
+spec:
+  replicas: {{ .Values.backend.replicas }}
+  selector:
+    matchLabels: { app: gitops-dashboard-backend }
+  template:
+    metadata:
+      labels: { app: gitops-dashboard-backend }
+    spec:
+      containers:
+        - name: backend
+          image: "{{ .Values.image.registry }}/gitops-dashboard-backend:{{ .Values.image.tag }}"
+          ports: [{ containerPort: {{ .Values.backend.port }} }]
+          readinessProbe:
+            httpGet: { path: /ready, port: {{ .Values.backend.port }} }
+          livenessProbe:
+            httpGet: { path: /health, port: {{ .Values.backend.port }} }
+          resources: {{- toYaml .Values.resources | nindent 12 }}

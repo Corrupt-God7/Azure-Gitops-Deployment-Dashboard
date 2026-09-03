@@ -1,0 +1,14 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: gitops-dashboard
+  namespace: argocd
+spec:
+  description: Development GitOps dashboard
+  sourceRepos: ["https://github.com/CHANGEME/azure-gitops-deployment-dashboard.git"]
+  destinations:
+    - namespace: gitops-dev
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace

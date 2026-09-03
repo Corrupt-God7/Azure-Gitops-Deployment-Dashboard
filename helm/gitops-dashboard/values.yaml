@@ -1,0 +1,16 @@
+image:
+  registry: acrgitopschirag.azurecr.io
+  tag: dev
+frontend:
+  replicas: 2
+  port: 3000
+backend:
+  replicas: 2
+  port: 8000
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

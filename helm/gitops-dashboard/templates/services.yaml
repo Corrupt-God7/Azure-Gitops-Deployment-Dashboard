@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: gitops-dashboard-frontend
+spec:
+  selector: { app: gitops-dashboard-frontend }
+  ports: [{ name: http, port: 80, targetPort: 3000 }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gitops-dashboard-backend
+  labels: { app: gitops-dashboard-backend }
+spec:
+  selector: { app: gitops-dashboard-backend }
+  ports: [{ name: http, port: 8000, targetPort: 8000 }]

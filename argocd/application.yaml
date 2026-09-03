@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gitops-dashboard
+  namespace: argocd
+spec:
+  project: gitops-dashboard
+  source:
+    repoURL: https://github.com/CHANGEME/azure-gitops-deployment-dashboard.git
+    targetRevision: main
+    path: helm/gitops-dashboard
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: gitops-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
