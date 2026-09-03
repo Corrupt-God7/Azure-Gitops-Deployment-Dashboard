@@ -8,6 +8,8 @@ Day 1 is complete and the first product slice has started:
 
 - MVP scope and system ownership are documented.
 - A responsive dashboard frontend displays health, sync status, release information, workloads, history, and Prometheus-style metrics.
+- Sidebar navigation opens dedicated Applications, Deployments, Metrics, Infrastructure, and Settings workspaces.
+- Delivery stages, application selection, infrastructure selection, settings switches, sync, and confirmed rollback controls are interactive.
 - Sync and rollback controls run as safe UI simulations until the FastAPI integrations are enabled.
 - The FastAPI backend includes `/health`, `/ready`, and `/api/applications` development endpoints.
 - Initial Docker, GitHub Actions, Terraform, Helm, Argo CD, Prometheus, and Grafana files are scaffolded.
