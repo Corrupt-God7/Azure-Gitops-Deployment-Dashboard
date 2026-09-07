@@ -13,7 +13,11 @@ spec:
       containers:
         - name: frontend
           image: "{{ .Values.image.registry }}/gitops-dashboard-frontend:{{ .Values.image.tag }}"
+          imagePullPolicy: Always
           ports: [{ containerPort: {{ .Values.frontend.port }} }]
+          env:
+            - name: BACKEND_URL
+              value: "http://gitops-dashboard-backend:8000"
           readinessProbe:
             httpGet: { path: /, port: {{ .Values.frontend.port }} }
           resources: {{- toYaml .Values.resources | nindent 12 }}
@@ -33,6 +37,7 @@ spec:
       containers:
         - name: backend
           image: "{{ .Values.image.registry }}/gitops-dashboard-backend:{{ .Values.image.tag }}"
+          imagePullPolicy: Always
           ports: [{ containerPort: {{ .Values.backend.port }} }]
           readinessProbe:
             httpGet: { path: /ready, port: {{ .Values.backend.port }} }
