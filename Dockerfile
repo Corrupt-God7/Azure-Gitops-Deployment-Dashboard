@@ -1,10 +1,12 @@
 FROM node:22-alpine AS dependencies
 WORKDIR /app
+RUN apk add --no-cache bash coreutils dos2unix
 COPY package.json package-lock.json ./
 RUN npm ci
 
 FROM dependencies AS builder
 COPY . .
+RUN dos2unix scripts/*.sh
 RUN npm run build
 
 FROM node:22-alpine AS runtime
