@@ -5,21 +5,27 @@ metadata:
 spec:
   replicas: {{ .Values.frontend.replicas }}
   selector:
-    matchLabels: { app: gitops-dashboard-frontend }
+    matchLabels:
+      app: gitops-dashboard-frontend
   template:
     metadata:
-      labels: { app: gitops-dashboard-frontend }
+      labels:
+        app: gitops-dashboard-frontend
     spec:
       containers:
         - name: frontend
           image: "{{ .Values.image.registry }}/gitops-dashboard-frontend:{{ .Values.image.tag }}"
           imagePullPolicy: Always
-          ports: [{ containerPort: {{ .Values.frontend.port }} }]
+          ports:
+            - name: http
+              containerPort: {{ .Values.frontend.port }}
           env:
             - name: BACKEND_URL
               value: "http://gitops-dashboard-backend:8000"
           readinessProbe:
-            httpGet: { path: /, port: {{ .Values.frontend.port }} }
+            httpGet:
+              path: /
+              port: {{ .Values.frontend.port }}
           resources: {{- toYaml .Values.resources | nindent 12 }}
 ---
 apiVersion: apps/v1
@@ -29,18 +35,27 @@ metadata:
 spec:
   replicas: {{ .Values.backend.replicas }}
   selector:
-    matchLabels: { app: gitops-dashboard-backend }
+    matchLabels:
+      app: gitops-dashboard-backend
   template:
     metadata:
-      labels: { app: gitops-dashboard-backend }
+      labels:
+        app: gitops-dashboard-backend
     spec:
+      serviceAccountName: gitops-dashboard-backend
       containers:
         - name: backend
           image: "{{ .Values.image.registry }}/gitops-dashboard-backend:{{ .Values.image.tag }}"
           imagePullPolicy: Always
-          ports: [{ containerPort: {{ .Values.backend.port }} }]
+          ports:
+            - name: http
+              containerPort: {{ .Values.backend.port }}
           readinessProbe:
-            httpGet: { path: /ready, port: {{ .Values.backend.port }} }
+            httpGet:
+              path: /ready
+              port: {{ .Values.backend.port }}
           livenessProbe:
-            httpGet: { path: /health, port: {{ .Values.backend.port }} }
+            httpGet:
+              path: /health
+              port: {{ .Values.backend.port }}
           resources: {{- toYaml .Values.resources | nindent 12 }}
