@@ -10,14 +10,10 @@ metadata:
   name: gitops-dashboard-argocd-reader
   namespace: argocd
 rules:
-  - apiGroups:
-      - argoproj.io
-    resources:
-      - applications
-    resourceNames:
-      - gitops-dashboard
-    verbs:
-      - get
+  - apiGroups: ["argoproj.io"]
+    resources: ["applications"]
+    resourceNames: ["gitops-dashboard"]
+    verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -32,3 +28,31 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
   name: gitops-dashboard-argocd-reader
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: gitops-dashboard-workload-reader
+  namespace: {{ .Release.Namespace }}
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: ["gitops-dashboard-frontend", "gitops-dashboard-backend"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: gitops-dashboard-workload-reader
+  namespace: {{ .Release.Namespace }}
+subjects:
+  - kind: ServiceAccount
+    name: gitops-dashboard-backend
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: gitops-dashboard-workload-reader
