@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-app = FastAPI(title="GitOps Dashboard API", version="0.3.0")
+app = FastAPI(title="GitOps Dashboard API", version="0.4.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://localhost:3001"],
@@ -62,6 +62,15 @@ class Workload(BaseModel):
     pods: list[PodStatus]
 
 
+class DeploymentHistory(BaseModel):
+    id: int
+    revision: str
+    deployed_at: str | None
+    deploy_started_at: str | None
+    initiated_by: str
+    current: bool
+
+
 class Application(BaseModel):
     name: str
     namespace: str
@@ -70,6 +79,7 @@ class Application(BaseModel):
     revision: str
     workloads: list[Workload] = Field(default_factory=list)
     workloads_error: str | None = None
+    history: list[DeploymentHistory] = Field(default_factory=list)
 
 
 @app.get("/health")
@@ -188,6 +198,44 @@ def get_workloads(client: httpx.Client) -> list[Workload]:
     return workloads
 
 
+def get_deployment_history(status: dict) -> list[DeploymentHistory]:
+    current_revision = (status.get("sync") or {}).get("revision") or ""
+    raw_history = status.get("history") or []
+    if not isinstance(raw_history, list):
+        return []
+    result = []
+    # Argo CD stores history oldest-first. The dashboard shows the latest first.
+    for fallback_id, item in reversed(list(enumerate(raw_history))):
+        if not isinstance(item, dict):
+            continue
+        revision = item.get("revision")
+        if not isinstance(revision, str) or not revision:
+            continue
+        identifier = item.get("id")
+        if not isinstance(identifier, int) or isinstance(identifier, bool):
+            identifier = fallback_id
+        initiated = item.get("initiatedBy") or {}
+        username = initiated.get("username") if isinstance(initiated, dict) else None
+        if isinstance(username, str) and username.strip():
+            initiated_by = username.strip()
+        elif isinstance(initiated, dict) and initiated.get("automated") is True:
+            initiated_by = "Automated sync"
+        else:
+            initiated_by = "Unknown"
+        deployed_at = item.get("deployedAt")
+        deploy_started_at = item.get("deployStartedAt")
+        result.append(DeploymentHistory(
+            id=identifier,
+            revision=revision[:7],
+            deployed_at=deployed_at if isinstance(deployed_at, str) else None,
+            deploy_started_at=(deploy_started_at
+                               if isinstance(deploy_started_at, str) else None),
+            initiated_by=initiated_by,
+            current=revision == current_revision,
+        ))
+    return result
+
+
 @app.get("/api/applications", response_model=list[Application])
 def applications() -> list[Application]:
     with kubernetes_client() as client:
@@ -210,6 +258,7 @@ def applications() -> list[Application]:
             health=(status.get("health") or {}).get("status") or "Unknown",
             sync=(status.get("sync") or {}).get("status") or "Unknown",
             revision=((status.get("sync") or {}).get("revision") or "unknown")[:7],
+            history=get_deployment_history(status),
         )
         if result.namespace != WORKLOAD_NAMESPACE:
             result.workloads_error = "Application destination does not match the configured workload namespace."

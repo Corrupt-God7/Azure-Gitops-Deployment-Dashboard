@@ -10,7 +10,8 @@ type View = "Overview" | "Applications" | "Deployments" | "Metrics" | "Infrastru
 type Container = { name: string; image: string; image_id: string | null; state: string; ready: boolean; restarts: number };
 type Pod = { name: string; phase: string; ready: boolean; terminating: boolean; containers: Container[] };
 type Workload = { name: string; exists: boolean; desired_replicas: number | null; active_pods: number; ready_pods: number; terminating_pods: number; desired_images: { name: string; image: string }[]; pods: Pod[] };
-type Application = { name: string; namespace: string; health: string; sync: string; revision: string; workloads?: Workload[]; workloads_error?: string | null };
+type Deployment = { id: number; revision: string; deployed_at: string | null; deploy_started_at: string | null; initiated_by: string; current: boolean };
+type Application = { name: string; namespace: string; health: string; sync: string; revision: string; workloads?: Workload[]; workloads_error?: string | null; history?: Deployment[] };
 const nav = [
   { label: "Overview", icon: LayoutDashboard }, { label: "Applications", icon: Boxes },
   { label: "Deployments", icon: History }, { label: "Metrics", icon: Activity },
@@ -29,8 +30,11 @@ function isPod(value: unknown): value is Pod {
 function isWorkload(value: unknown): value is Workload {
   return record(value) && typeof value.name === "string" && typeof value.exists === "boolean" && (value.desired_replicas === null || count(value.desired_replicas)) && count(value.active_pods) && count(value.ready_pods) && count(value.terminating_pods) && Array.isArray(value.pods) && value.pods.every(isPod) && Array.isArray(value.desired_images) && value.desired_images.every((image) => record(image) && typeof image.name === "string" && typeof image.image === "string");
 }
+function isDeployment(value: unknown): value is Deployment {
+  return record(value) && count(value.id) && typeof value.revision === "string" && (value.deployed_at === null || typeof value.deployed_at === "string") && (value.deploy_started_at === null || typeof value.deploy_started_at === "string") && typeof value.initiated_by === "string" && typeof value.current === "boolean";
+}
 function isApplication(value: unknown): value is Application {
-  return record(value) && ["name", "namespace", "health", "sync", "revision"].every((key) => typeof value[key] === "string") && (value.workloads === undefined || (Array.isArray(value.workloads) && value.workloads.every(isWorkload))) && (value.workloads_error == null || typeof value.workloads_error === "string");
+  return record(value) && ["name", "namespace", "health", "sync", "revision"].every((key) => typeof value[key] === "string") && (value.workloads === undefined || (Array.isArray(value.workloads) && value.workloads.every(isWorkload))) && (value.workloads_error == null || typeof value.workloads_error === "string") && (value.history === undefined || (Array.isArray(value.history) && value.history.every(isDeployment)));
 }
 
 export default function Home() {
@@ -93,7 +97,7 @@ export default function Home() {
           <Pending title="Monitoring is not connected yet" description="Request traffic, errors, CPU and memory will appear after monitoring is configured." />
         </>}
         {view === "Applications" && <ApplicationCard application={application} fallback={fallback} checkedAt={checkedAt} />}
-        {view === "Deployments" && <Pending title="Deployment history is not connected yet" description="Use Argo CD to inspect deployment history. The Applications screen shows current workloads and their container images." />}
+        {view === "Deployments" && <DeploymentHistory application={application} fallback={fallback} />}
         {view === "Metrics" && <Pending title="Monitoring is not connected yet" description="Prometheus and Grafana integration is a later step." />}
         {view === "Infrastructure" && <div className="data-card"><p className="eyebrow">CONFIGURED ENVIRONMENT</p><h2>Local Kubernetes and GHCR</h2><div className="detail-facts"><Fact label="Cluster" value="gitops-dev" /><Fact label="Platform" value="kind on Docker Desktop" /><Fact label="Node" value="gitops-dev-control-plane" /><Fact label="Image registry" value="ghcr.io/corrupt-god7" /></div><p>These are configured environment details. Live node measurements are not connected yet.</p></div>}
         {view === "Settings" && <div className="data-card"><p className="eyebrow">DASHBOARD CONNECTION</p><h2>Read-only application status</h2><div className="detail-facts"><Fact label="API endpoint" value="/api/applications" /><Fact label="Polling" value="15 seconds after each request" /><Fact label="Request timeout" value="10 seconds" /><Fact label="Application" value="gitops-dashboard" /></div><p>Refresh status reads the latest application and workload data. Manage deployments and synchronization in Argo CD.</p></div>}
@@ -127,6 +131,28 @@ function WorkloadCard({ workload }: { workload: Workload }) {
       </details>
     </>}
   </section>;
+}
+function DeploymentHistory({ application, fallback }: { application: Application | null; fallback: string }) {
+  const history = application?.history;
+  return <section className="data-card"><p className="eyebrow">ARGO CD HISTORY</p><h2>Successful synchronizations</h2>
+    <p style={{ color: "#94a3b8", fontSize: ".8rem", margin: "8px 0 16px" }}>Read from the Argo CD Application status. Newest records appear first. This screen is read-only.</p>
+    {!application ? <p role="status">Deployment history {fallback.toLowerCase()}</p> : history === undefined ? <p role="status">History is not available from this backend yet. Deploy the updated backend and refresh.</p> : history.length === 0 ? <p>Argo CD has not recorded any synchronization history for this application.</p> :
+      <Table><TableHeader><TableRow><TableHead>Sequence</TableHead><TableHead>Revision</TableHead><TableHead>Deployed at</TableHead><TableHead>Initiated by</TableHead><TableHead>Duration</TableHead><TableHead>State</TableHead></TableRow></TableHeader><TableBody>{history.map((deployment) => <TableRow key={`${deployment.id}-${deployment.revision}`}><TableCell>#{deployment.id}</TableCell><TableCell><code>{deployment.revision}</code></TableCell><TableCell>{formatTimestamp(deployment.deployed_at)}</TableCell><TableCell style={wrap}>{deployment.initiated_by}</TableCell><TableCell>{formatDuration(deployment.deploy_started_at, deployment.deployed_at)}</TableCell><TableCell><Badge variant="outline" style={{ color: deployment.current ? "#2dd4bf" : undefined }}>{deployment.current ? "Current" : "Superseded"}</Badge></TableCell></TableRow>)}</TableBody></Table>}
+  </section>;
+}
+function formatTimestamp(value: string | null) {
+  if (!value) return "Unavailable";
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
+}
+function formatDuration(start: string | null, end: string | null) {
+  if (!start || !end) return "Unavailable";
+  const milliseconds = new Date(end).getTime() - new Date(start).getTime();
+  if (!Number.isFinite(milliseconds) || milliseconds < 0) return "Unavailable";
+  const seconds = Math.round(milliseconds / 1000);
+  if (seconds < 1) return "<1 sec";
+  if (seconds < 60) return `${seconds} sec`;
+  return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
 }
 function Fact({ label, value }: { label: string; value: string }) { return <div><span>{label}</span><strong title={value}>{value}</strong></div>; }
 function Summary({ icon: Icon, label, value, note, healthy = false }: { icon: typeof Boxes; label: string; value: string; note: string; healthy?: boolean }) { return <div className={`summary-card ${healthy ? "healthy-card" : ""}`}><div className="summary-title"><Icon />{label}</div><div className="summary-value">{value}</div><p>{note}</p></div>; }
