@@ -1,5 +1,5 @@
 image:
-  registry: ghcr.io/corrupt-god7
+  registry: ghcr.io/chirag-deviputra
   tag: dev
 frontend:
   replicas: 2
