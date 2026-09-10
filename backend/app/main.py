@@ -9,8 +9,11 @@ import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from .monitoring import ApplicationMetricsMiddleware, router as monitoring_router
 
-app = FastAPI(title="GitOps Dashboard API", version="0.4.0")
+app = FastAPI(title="GitOps Dashboard API", version="0.5.0")
+app.add_middleware(ApplicationMetricsMiddleware)
+app.include_router(monitoring_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://localhost:3001"],

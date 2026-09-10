@@ -5,6 +5,7 @@ import { Activity, Boxes, Cloud, GitBranch, History, LayoutDashboard, RefreshCw,
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { MetricsPanel } from "./metrics-panel";
 
 type View = "Overview" | "Applications" | "Deployments" | "Metrics" | "Infrastructure" | "Settings";
 type Container = { name: string; image: string; image_id: string | null; state: string; ready: boolean; restarts: number };
@@ -94,14 +95,14 @@ export default function Home() {
             <Summary icon={Boxes} label="Namespace" value={application?.namespace ?? fallback} note="Application destination" />
           </div>
           <ApplicationCard application={application} fallback={fallback} checkedAt={checkedAt} />
-          <Pending title="Monitoring is not connected yet" description="Request traffic, errors, CPU and memory will appear after monitoring is configured." />
+          <MetricsPanel refreshKey={refreshKey} />
         </>}
         {view === "Applications" && <ApplicationCard application={application} fallback={fallback} checkedAt={checkedAt} />}
         {view === "Deployments" && <DeploymentHistory application={application} fallback={fallback} />}
-        {view === "Metrics" && <Pending title="Monitoring is not connected yet" description="Prometheus and Grafana integration is a later step." />}
-        {view === "Infrastructure" && <div className="data-card"><p className="eyebrow">CONFIGURED ENVIRONMENT</p><h2>Local Kubernetes and GHCR</h2><div className="detail-facts"><Fact label="Cluster" value="gitops-dev" /><Fact label="Platform" value="kind on Docker Desktop" /><Fact label="Node" value="gitops-dev-control-plane" /><Fact label="Image registry" value="ghcr.io/corrupt-god7" /></div><p>These are configured environment details. Live node measurements are not connected yet.</p></div>}
+        {view === "Metrics" && <MetricsPanel refreshKey={refreshKey} />}
+        {view === "Infrastructure" && <div className="data-card"><p className="eyebrow">CONFIGURED ENVIRONMENT</p><h2>Local Kubernetes and GHCR</h2><div className="detail-facts"><Fact label="Cluster" value="gitops-dev" /><Fact label="Platform" value="kind on Docker Desktop" /><Fact label="Node" value="gitops-dev-control-plane" /><Fact label="Image registry" value="ghcr.io/chirag-deviputra" /></div><p>These are configured environment details. Open Metrics for live workload CPU and memory.</p></div>}
         {view === "Settings" && <div className="data-card"><p className="eyebrow">DASHBOARD CONNECTION</p><h2>Read-only application status</h2><div className="detail-facts"><Fact label="API endpoint" value="/api/applications" /><Fact label="Polling" value="15 seconds after each request" /><Fact label="Request timeout" value="10 seconds" /><Fact label="Application" value="gitops-dashboard" /></div><p>Refresh status reads the latest application and workload data. Manage deployments and synchronization in Argo CD.</p></div>}
-        <footer className="page-footer"><span>{application ? "Application API connected" : error ? "Application API unavailable" : "Connecting to application API…"}</span><span>Git revision: {application?.revision ?? "—"}</span><span>Read-only dashboard</span></footer>
+        <footer className="page-footer" style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: "8px 24px", color: "#94a3b8", fontSize: ".875rem", padding: "8px 0" }}><span>{application ? "Application API connected" : error ? "Application API unavailable" : "Connecting to application API…"}</span><span>Git revision: {application?.revision ?? "—"}</span><span>Read-only dashboard</span></footer>
       </div>
     </section>
   </main>;
@@ -156,4 +157,3 @@ function formatDuration(start: string | null, end: string | null) {
 }
 function Fact({ label, value }: { label: string; value: string }) { return <div><span>{label}</span><strong title={value}>{value}</strong></div>; }
 function Summary({ icon: Icon, label, value, note, healthy = false }: { icon: typeof Boxes; label: string; value: string; note: string; healthy?: boolean }) { return <div className={`summary-card ${healthy ? "healthy-card" : ""}`}><div className="summary-title"><Icon />{label}</div><div className="summary-value">{value}</div><p>{note}</p></div>; }
-function Pending({ title, description }: { title: string; description: string }) { return <section className="data-card"><p className="eyebrow">UPCOMING INTEGRATION</p><h2>{title}</h2><p>{description}</p></section>; }
